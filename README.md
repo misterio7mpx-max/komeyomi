@@ -1,4 +1,4 @@
-# komeyomi-open2ch-Gemini-Telepathic-Bridge-
+# komeyomi
 
 ## 📌 概要 (Overview)
 このスクリプトは、おーぷん2chのコメント（kome）を自動で読み上げつつ、指定したキーワードに反応してAI（Gemini）へコメントを転送・自動送信するTampermonkey用スクリプトです。
