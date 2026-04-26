@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Komeyomi (Rebuild)
 // @namespace    http://tampermonkey.net/
-// @version      1.0.1
+// @version      1.0.2
 // @description  Komeyomi 起動制御（左右分割シールド版・フル機能統合版）
 // @match        https://*.open2ch.net/test/read.cgi/*
 // @grant        GM_xmlhttpRequest
@@ -9,7 +9,6 @@
 // @grant        GM_getValue
 // @grant        GM_deleteValue
 // @connect      localhost
-// @connect      127.0.0.1
 // ==/UserScript==
 
 (function() {
@@ -31,30 +30,31 @@
     // [Phase 1] 起動制御シールド (StartupShield)
     // =========================================================
     const StartupShield = {
-        streamKey: "Komeyomi_StreamKey_Default_V1",
-
         build: function() {
             const shield = document.createElement('div');
             shield.id = 'komeyomi-startup-shield';
             shield.style.cssText = `
-                position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+                position: fixed;
+                top: 0; left: 0; width: 100vw; height: 100vh;
                 z-index: 999999; display: flex; font-family: "Meiryo", sans-serif;
                 backdrop-filter: blur(10px); background: rgba(0,0,0,0.4);
             `;
-
             const leftZone = document.createElement('div');
             leftZone.innerHTML = `<div><div style="font-size:48px; font-weight:bold;">通常</div><div style="font-size:16px; margin-top:10px;">サイトをそのまま表示</div></div>`;
             leftZone.style.cssText = `
-                flex: 1; display: flex; justify-content: center; align-items: center;
+                flex: 1;
+                display: flex; justify-content: center; align-items: center;
                 cursor: pointer; color: white; background: rgba(60, 60, 60, 0.7);
-                transition: background 0.3s; border-right: 1px solid rgba(255,255,255,0.2);
+                transition: background 0.3s;
+                border-right: 1px solid rgba(255,255,255,0.2);
                 text-align: center;
             `;
 
             const rightZone = document.createElement('div');
             rightZone.innerHTML = `<div><div style="font-size:48px; font-weight:bold;">配信</div><div style="font-size:16px; margin-top:10px;">Komeyomiを起動し、キーをコピー</div></div>`;
             rightZone.style.cssText = `
-                flex: 1; display: flex; justify-content: center; align-items: center;
+                flex: 1;
+                display: flex; justify-content: center; align-items: center;
                 cursor: pointer; color: white; background: rgba(0, 123, 255, 0.6);
                 transition: background 0.3s; text-align: center;
             `;
@@ -69,11 +69,24 @@
             };
 
             rightZone.onclick = () => {
-                navigator.clipboard.writeText(this.streamKey).then(() => {
+                // 現在のURLを解析してキーを生成
+                const pathParts = window.location.pathname.split('/');
+                const boardName = pathParts[3];
+                const threadId = pathParts[4];
+                let streamKeyToCopy = "";
+
+                if (boardName && threadId) {
+                    streamKeyToCopy = `${boardName}-${threadId}`;
+                } else {
+                    streamKeyToCopy = "キーの取得に失敗しました";
+                    console.error("Komeyomi: URLからストリームキーを生成できませんでした", window.location.href);
+                }
+
+                navigator.clipboard.writeText(streamKeyToCopy).then(() => {
                     shield.remove();
                     App.init();
                 }).catch(err => {
-                    alert("キーのコピーに失敗しました。ブラウザの権限を確認してください。");
+                    alert("キーのコピーに失敗しました。ブラウザの権限を確認してください。\n生成されたキー: " + streamKeyToCopy);
                     shield.remove();
                     App.init();
                 });
@@ -85,7 +98,7 @@
         }
     }
     // =========================================================
-    // [Phase 2, 3 & 5] UI管理モジュール (UIManager)
+    // [Phase 2] UI管理モジュール (UIManager)
     // =========================================================
     const UIManager = {
         build: function() {
@@ -111,35 +124,41 @@
                 #komeyomi-marquee-area { background: var(--ky-bg-marquee) !important; height: var(--ky-marquee-h) !important; border-bottom: 2px solid #333; position: relative; }
 
                 #komeyomi-user-subtitle-area {
-                    background: var(--ky-bg-user) !important; height: var(--ky-user-h) !important;
+                    background: var(--ky-bg-user) !important;
+                    height: var(--ky-user-h) !important;
                     font-size: var(--ky-user-font) !important;
                     font-family: var(--ky-font-user) !important;
                     line-height: 1.15 !important; display: flex !important;
-                    align-items: var(--ky-user-vert) !important; justify-content: var(--ky-user-horz) !important; padding: 0 15px !important;
+                    /* ▼修正: 枠自体は【常に中央】に固定する */
+                    justify-content: center !important; padding: 0 15px !important;
                 }
 
                 .ky-user-text-inner {
                     width: 20em;
                     max-width: 20em;
-                    /* ↓ 変更点: 高さを常に親枠（最大2行分）と完全に一致させる */
                     height: var(--ky-user-h);
                     border-left: 1px dashed rgba(128, 128, 128, 0.8);
                     border-right: 1px dashed rgba(128, 128, 128, 0.8);
                     box-sizing: border-box;
                     padding: 0 5px;
-
-                    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
-                    overflow: hidden; word-break: break-all; text-align: var(--ky-user-text-align) !important;
+                    /* ▼修正: 中の文字の上下左右の配置を直接コントロールする */
+                    display: flex !important;
+                    flex-direction: column !important;
+                    justify-content: var(--ky-user-vert) !important;
+                    text-align: var(--ky-user-text-align) !important;
+                    overflow: hidden; word-break: break-all;
                 }
 
                 #komeyomi-sidebar {
-                    background: var(--ky-bg-sidebar) !important; width: var(--ky-sidebar-w) !important;
+                    background: var(--ky-bg-sidebar) !important;
+                    width: var(--ky-sidebar-w) !important;
                     top: var(--ky-total-h) !important; gap: var(--ky-sidebar-gap) !important;
                     font-family: var(--ky-font-sb) !important;
                 }
 
                 .ky-comment-item {
-                    background: var(--ky-bg-sidebar-item) !important; padding: var(--ky-sidebar-pad) !important;
+                    background: var(--ky-bg-sidebar-item) !important;
+                    padding: var(--ky-sidebar-pad) !important;
                     font-size: var(--ky-sidebar-font) !important;
                     border-radius: 4px; color: #000; word-break: break-all; border-left: 4px solid #007bff; flex-shrink: 0;
                     animation: kyPopIn 0.3s ease-out forwards; box-shadow: 0 1px 3px rgba(0,0,0,0.1);
@@ -165,34 +184,26 @@
             const sidebar = document.getElementById('komeyomi-sidebar');
             const toolbar = document.getElementById('komeyomi-toolbar');
             if (!target || !sidebar || !toolbar) return;
-
             const lockPosition = () => {
                 const tbRect = toolbar.getBoundingClientRect();
-
-                // ツールバーのすぐ上に配置 (+10はツールバーとの隙間)
                 const bottomPos = window.innerHeight - tbRect.top + 10;
-                // ツールバーの右端とkomedivの右端をピッタリ揃える
                 const rightPos = window.innerWidth - tbRect.right;
-
                 target.style.setProperty('top', 'auto', 'important');
                 target.style.setProperty('left', 'auto', 'important');
                 target.style.setProperty('margin', '0', 'important');
                 target.style.setProperty('bottom', `${bottomPos}px`, 'important');
                 target.style.setProperty('right', `${rightPos}px`, 'important');
             };
-
             const observer = new MutationObserver(() => {
                 observer.disconnect();
                 lockPosition();
                 observer.observe(target, { attributes: true, attributeFilter: ['style'] });
             });
-
             window.addEventListener('resize', () => {
                 observer.disconnect();
                 lockPosition();
                 observer.observe(target, { attributes: true, attributeFilter: ['style'] });
             });
-
             lockPosition();
             observer.observe(target, { attributes: true, attributeFilter: ['style'] });
         },
@@ -205,7 +216,6 @@
             const marqueeArea = document.createElement('div');
             marqueeArea.id = 'komeyomi-marquee-area';
             marqueeArea.style.cssText = `width: 100%; position: relative; overflow: hidden;`;
-
             const userSubtitleArea = document.createElement('div');
             userSubtitleArea.id = 'komeyomi-user-subtitle-area';
             userSubtitleArea.style.cssText = `width: 100%; display: flex; justify-content: center; align-items: center; color: #fff; font-weight: bold;`;
@@ -223,7 +233,6 @@
         buildToolbar: function() {
             const toolbar = document.createElement('div');
             toolbar.id = 'komeyomi-toolbar';
-            // 変更点: 中央寄りから右下(サイドバーの左隣)へ移動。align-itemsをstretchにして高さを揃える
             toolbar.style.cssText = `position: fixed; bottom: 15px; right: calc(var(--ky-sidebar-w) + 15px); display: flex; align-items: stretch; gap: 8px; background: #222; padding: 10px 15px; border-radius: 8px; z-index: 99999; box-shadow: 0 4px 10px rgba(0,0,0,0.5);`;
 
             const inputField = document.createElement('textarea');
@@ -231,24 +240,40 @@
             inputField.maxLength = 40;
             inputField.rows = 2;
             inputField.placeholder = 'メッセージを入力...';
-            // 変更点: box-sizingを追加し、親枠の高さにフィットさせる
-            inputField.style.cssText = `width: 350px; padding: 5px; font-size: 24px; border: 1px solid #555; border-radius: 4px; outline: none; background: #fff; color: #000; resize: none; overflow: hidden; font-family: sans-serif; line-height: 1.4; box-sizing: border-box;`;
+            inputField.style.cssText = `width: 500px; padding: 5px; font-size: 24px; border: 1px solid #555; border-radius: 4px; outline: none; background: #fff; color: #000; resize: none; overflow: hidden; font-family: sans-serif; line-height: 1.4; box-sizing: border-box;`;
 
             const settingsBtn = document.createElement('button');
             settingsBtn.id = 'komeyomi-settings-btn';
             settingsBtn.textContent = '⚙';
             settingsBtn.title = '設定';
-            // 変更点: マージンを消し、flexで文字を中央に配置
             settingsBtn.style.cssText = `padding: 0 10px; font-size: 20px; cursor: pointer; background: #444; color: #fff; border: none; border-radius: 4px; display: flex; align-items: center; justify-content: center;`;
+
+            const pauseBtn = document.createElement('button');
+            pauseBtn.id = 'komeyomi-pause-btn';
+            pauseBtn.textContent = '🔊';
+            pauseBtn.title = '読み上げを一時停止';
+            pauseBtn.style.cssText = `padding: 0 10px; font-size: 20px; cursor: pointer; background: #444; color: #fff; border: none; border-radius: 4px; display: flex; align-items: center; justify-content: center; transition: background-color 0.2s;`;
+
+            pauseBtn.onclick = () => {
+                AudioEngine.isMuted = !AudioEngine.isMuted;
+                if (AudioEngine.isMuted) {
+                    pauseBtn.style.backgroundColor = '#dc3545';
+                    pauseBtn.textContent = '🔇';
+                    pauseBtn.title = '読み上げを再開';
+                } else {
+                    pauseBtn.style.backgroundColor = '#444';
+                    pauseBtn.textContent = '🔊';
+                    pauseBtn.title = '読み上げを一時停止';
+                }
+            };
 
             const sendBtn = document.createElement('button');
             sendBtn.id = 'komeyomi-send-btn';
             sendBtn.textContent = '送信';
-            // 変更点: flexで文字を中央に配置
             sendBtn.style.cssText = `padding: 0 20px; font-size: 16px; cursor: pointer; background: #007bff; color: #fff; border: none; border-radius: 4px; font-weight: bold; display: flex; align-items: center; justify-content: center;`;
 
-            // 変更点: 追加順を「⚙ → 入力欄 → 送信ボタン」の順にする
             toolbar.appendChild(settingsBtn);
+            toolbar.appendChild(pauseBtn);
             toolbar.appendChild(inputField);
             toolbar.appendChild(sendBtn);
             document.body.appendChild(toolbar);
@@ -265,7 +290,6 @@
             const panel = document.createElement('div');
             panel.id = 'komeyomi-settings-panel';
             panel.style.cssText = `position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 500px; background: #fff; border: 1px solid #ccc; border-radius: 8px; box-shadow: 0 4px 20px rgba(0,0,0,0.3); z-index: 100000; display: none; flex-direction: column; font-family: sans-serif;`;
-
             const fontOptions = `
                 <option value="sans-serif">標準 (ゴシック)</option>
                 <option value="'Noto Sans JP', sans-serif">Noto Sans JP</option>
@@ -275,7 +299,6 @@
                 <option value="'Yusei Magic', sans-serif">Yusei Magic</option>
                 <option value="'UD Digi Kyokasho NK-R', 'UD デジタル 教科書体 NK-R', sans-serif">教科書体NK</option>
             `;
-
             panel.innerHTML = `
                 <style>
                     .ky-tab-btn { flex: 1; padding: 12px; text-align: center; cursor: pointer; background: #e0e0e0; font-weight: bold; font-size: 14px; border-right: 1px solid #ccc; }
@@ -336,7 +359,7 @@
 
                     <div class="ky-row ky-flex" style="background:#f9f9f9; padding:10px; border-radius:4px; border:1px solid #eee;">
                         <div style="flex:1"><label>ユーザー字幕 縦位置</label><select id="ky-set-us-vert" class="ky-input"><option value="flex-start">上寄り</option><option value="center">中央</option><option value="flex-end">下寄り</option></select></div>
-                        <div style="flex:1"><label>ユーザー字幕 横位置</label><select id="ky-set-us-horz" class="ky-input"><option value="flex-start">左寄り</option><option value="center">中央</option></select></div>
+                        <div style="flex:1"><label>ユーザー字幕 横位置</label><select id="ky-set-us-horz" class="ky-input"><option value="left">左寄せ</option><option value="center">中央</option></select></div>
                     </div>
                     <div class="ky-row ky-flex">
                         <div style="flex:1"><label>テロップ背景</label><input type="color" id="ky-set-col-mq" style="width:100%;"></div>
@@ -358,13 +381,15 @@
                     <div class="ky-row"><label>AssistantSeika URL</label><input type="text" id="ky-set-url-sei" class="ky-input"></div>
                 </div>
 
-                <div style="padding: 10px; border-top: 1px solid #ccc; text-align: right; background: #fafafa; border-radius: 0 0 8px 8px;">
+                <div style="padding: 10px; border-top: 1px solid #ccc; display: flex; justify-content: space-between; align-items: center; background: #fafafa; border-radius: 0 0 8px 8px;">
+                    <button id="ky-btn-reset-panel" class="ky-btn ky-btn-del" title="すべての設定を消去して初期状態に戻します">設定を初期化</button>
                     <button id="ky-btn-close-panel" class="ky-btn ky-btn-close">閉じる</button>
                 </div>
             `;
             document.body.appendChild(panel);
             setTimeout(() => this.bindSettingsUI(), 100);
         },
+
         bindSettingsUI: function() {
             const panel = document.getElementById('komeyomi-settings-panel');
             if (!panel) return;
@@ -378,19 +403,24 @@
             });
             document.getElementById('ky-btn-close-panel').onclick = () => panel.style.display = 'none';
 
+            document.getElementById('ky-btn-reset-panel').onclick = () => {
+                if (confirm("すべての設定を初期状態に戻してページを再読み込みします。\nよろしいですか？")) {
+                    GM_deleteValue("Komeyomi_Config");
+                    location.reload();
+                }
+            };
+
             const bindSlider = (idSet, idVal, key) => {
                 const s = document.getElementById(idSet), v = document.getElementById(idVal);
                 if (!s || !v) return;
                 s.value = ConfigManager.get(key); v.textContent = s.value;
                 s.oninput = (e) => { v.textContent = e.target.value; ConfigManager.set(key, parseInt(e.target.value, 10)); };
             };
-
             const bindFloatSlider = (idSet, idVal, key) => {
                 const s = document.getElementById(idSet), v = document.getElementById(idVal);
                 if (!s || !v) return;
                 s.value = ConfigManager.get(key);
                 v.textContent = parseFloat(s.value).toFixed(2);
-
                 s.oninput = (e) => {
                     const val = parseFloat(e.target.value);
                     v.textContent = val.toFixed(2);
@@ -428,7 +458,6 @@
             bindSlider('ky-set-mq-font', 'ky-val-mq-font', 'sizeMarqueeFont');
             bindSlider('ky-set-us-font', 'ky-val-us-font', 'sizeUserFont');
             bindSlider('ky-set-speed', 'ky-val-speed', 'speedMarquee');
-
             bindFloatSlider('ky-set-u-vv-spd', 'ky-val-u-vv-spd', 'userVvSpeed');
             bindFloatSlider('ky-set-u-vv-pit', 'ky-val-u-vv-pit', 'userVvPitch');
             bindFloatSlider('ky-set-u-vv-int', 'ky-val-u-vv-int', 'userVvIntonation');
@@ -437,8 +466,10 @@
             const updateSpeakerSelects = () => {
                 const userEng = ConfigManager.get('userEngine');
                 const viewEng = ConfigManager.get('viewerEngine');
-                const targetUrl = (userEng === 'voicevox' || viewEng === 'voicevox') ? ConfigManager.get('voicevoxUrl') :
-                                  (userEng === 'coeiroink' || viewEng === 'coeiroink') ? ConfigManager.get('coeiroinkUrl') : null;
+                const targetUrl = (userEng === 'voicevox' || viewEng === 'voicevox') ?
+                                  ConfigManager.get('voicevoxUrl') :
+                                  (userEng === 'coeiroink' || viewEng === 'coeiroink') ?
+                                  ConfigManager.get('coeiroinkUrl') : null;
 
                 if (targetUrl) {
                     AudioEngine.fetchSpeakers(targetUrl, (list) => {
@@ -501,7 +532,6 @@
                     ['spd', 'pit', 'int'].forEach(type => {
                         const slider = item.querySelector(`.sp-${type}`);
                         const keyMap = { spd: 'speed', pit: 'pitch', int: 'intonation' };
-
                         const sync = () => {
                             const val = parseFloat(slider.value);
                             slider.nextElementSibling.textContent = val.toFixed(2);
@@ -529,6 +559,7 @@
 
             bindInput('ky-set-user-engine', 'userEngine');
             bindInput('ky-set-viewer-engine', 'viewerEngine');
+
             document.getElementById('ky-btn-add-viewer').onclick = () => {
                 const current = ConfigManager.get('viewerSpeakers') || [];
                 ConfigManager.set('viewerSpeakers', [...current, { id: 1, speed: 1.0, pitch: 0.0, intonation: 1.0 }]);
@@ -625,7 +656,6 @@
             if (!cleanText || cleanText.includes("Room:スレ限定") || cleanText.includes("komeを開始しますた")) return;
 
             UIManager.appendToSidebar(cleanText);
-
             if (!isInitialLoad) {
                 UIManager.spawnMarquee(cleanText);
                 AudioEngine.playViewer(cleanText);
@@ -675,20 +705,24 @@
         }
     }
     // =========================================================
-    // [Phase 4 & 5] 音声連携モジュール (AudioEngine)
+    // [Phase 4] 音声連携モジュール (AudioEngine)
     // =========================================================
     const AudioEngine = {
+        isMuted: false, // ▼追加: 送信ストップ用のフラグ
+
         init: function() {
             console.log("Komeyomi: AudioEngineを待機状態にしました。");
         },
 
         playViewer: function(text) {
+            // ▼追加: ミュート中はどこにもテキストを送信せず即終了
+            if (this.isMuted) return;
+
             const engine = ConfigManager.get("viewerEngine");
             const speakers = ConfigManager.get("viewerSpeakers");
             if (!speakers || !speakers.length) return;
 
             const sp = speakers[Math.floor(Math.random() * speakers.length)];
-
             if (engine === "voicevox") {
                 this.speakVoicevox(text, sp.id, ConfigManager.get("voicevoxUrl"), sp.speed, sp.pitch, sp.intonation);
             } else if (engine === "coeiroink") {
@@ -701,11 +735,13 @@
         },
 
         playUser: function(text) {
+            // ▼追加: ミュート中はどこにもテキストを送信せず即終了
+            if (this.isMuted) return;
+
             const engine = ConfigManager.get("userEngine");
             const spd = ConfigManager.get("userVvSpeed");
             const pit = ConfigManager.get("userVvPitch");
             const int = ConfigManager.get("userVvIntonation");
-
             if (engine === "voicevox") {
                 this.speakVoicevox(text, ConfigManager.get("userVoicevoxId"), ConfigManager.get("voicevoxUrl"), spd, pit, int);
             } else if (engine === "coeiroink") {
@@ -754,9 +790,13 @@
         },
 
         speakBouyomi: function(text) {
+            const targetUrl = `${ConfigManager.get("bouyomiUrl")}/talk?text=${encodeURIComponent(text)}`;
             GM_xmlhttpRequest({
                 method: "GET",
-                url: `${ConfigManager.get("bouyomiUrl")}/talk?text=${encodeURIComponent(text)}`
+                url: targetUrl,
+                onerror: (error) => {
+                    console.error("❌ 棒読みちゃん通信エラー! TampermonkeyのXHR設定か、URLが間違っている可能性があります。", error);
+                }
             });
         },
 
@@ -807,10 +847,11 @@
 
             enterSendReversed: false,
 
-            voicevoxUrl: "http://127.0.0.1:50021",
-            bouyomiUrl: "http://127.0.0.1:50080",
-            coeiroinkUrl: "http://127.0.0.1:50032",
-            seikaUrl: "http://127.0.0.1:7180",
+            voicevoxUrl: "http://localhost:50021",
+            bouyomiUrl: "http://localhost:50080",
+            coeiroinkUrl: "http://localhost:50032",
+            seikaUrl: "http://localhost:7180",
+
             sizeSidebarWidth: 320,
             sizeSidebarFont: 14,
             sizeSidebarPad: 8,
@@ -836,7 +877,6 @@
                     const parsed = JSON.parse(saved);
                     this.data = { ...this.data, ...parsed };
 
-                    // 古いviewerVoicevoxIdsからの移行処理
                     if (this.data.viewerVoicevoxIds && !parsed.viewerSpeakers) {
                         this.data.viewerSpeakers = this.data.viewerVoicevoxIds.map(id => ({ id: id, speed: 1.0, pitch: 0.0, intonation: 1.0 }));
                         delete this.data.viewerVoicevoxIds;
@@ -884,13 +924,16 @@
             root.style.setProperty('--ky-bg-sidebar', this.data.colorSidebarBg);
             root.style.setProperty('--ky-bg-sidebar-item', this.data.colorSidebarItemBg);
             root.style.setProperty('--ky-marquee-speed', `${this.data.speedMarquee}s`);
+
+            // ▼修正: CSSへの変数の渡し方を変更（左寄せと枠の中央維持の両立）
+            const horzAlign = (this.data.posUserHorz === 'flex-start' || this.data.posUserHorz === 'left') ? 'left' : 'center';
             root.style.setProperty('--ky-user-vert', this.data.posUserVert);
-            root.style.setProperty('--ky-user-horz', this.data.posUserHorz);
-            root.style.setProperty('--ky-user-text-align', this.data.posUserHorz === 'flex-start' ? 'left' : 'center');
+            root.style.setProperty('--ky-user-text-align', horzAlign);
 
             if (typeof UIManager !== "undefined" && UIManager.pinKomediv) UIManager.pinKomediv();
         }
     }
+
     // =========================================================
     // 実行エントリポイント
     // =========================================================
