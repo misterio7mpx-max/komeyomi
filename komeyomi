@@ -267,7 +267,6 @@
                 }
             };
 
-            // ▼ 追加: 送信ボタンとチェックボックスを縦に並べるコンテナ
             const sendContainer = document.createElement('div');
             sendContainer.style.cssText = `display: flex; flex-direction: column; gap: 4px; align-items: center; justify-content: center;`;
 
@@ -292,12 +291,11 @@
 
             sendContainer.appendChild(komeCheckLabel);
             sendContainer.appendChild(sendBtn);
-            // ▲ ここまで追加・変更
 
             toolbar.appendChild(settingsBtn);
             toolbar.appendChild(pauseBtn);
             toolbar.appendChild(inputField);
-            toolbar.appendChild(sendContainer); // 送信ボタン単体の代わりにコンテナを追加
+            toolbar.appendChild(sendContainer);
             document.body.appendChild(toolbar);
         },
 
@@ -313,7 +311,6 @@
             panel.id = 'komeyomi-settings-panel';
             panel.style.cssText = `position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 500px; background: #fff; border: 1px solid #ccc; border-radius: 8px; box-shadow: 0 4px 20px rgba(0,0,0,0.3); z-index: 100000; display: none; flex-direction: column; font-family: sans-serif;`;
 
-            // フォントの選択肢（07やさしさゴシックを含む）
             const fontOptions = `
                 <option value="sans-serif">標準 (ゴシック)</option>
                 <option value="'Noto Sans JP', sans-serif">Noto Sans JP</option>
@@ -411,6 +408,11 @@
                     <div class="ky-row"><label>棒読みちゃん URL</label><input type="text" id="ky-set-url-bou" class="ky-input"></div>
                     <div class="ky-row"><label>COEIROINK URL</label><input type="text" id="ky-set-url-coe" class="ky-input"></div>
                     <div class="ky-row"><label>AssistantSeika URL</label><input type="text" id="ky-set-url-sei" class="ky-input"></div>
+
+                    <div class="ky-row" style="margin-top: 20px; padding-top: 15px; border-top: 1px dashed #ccc;">
+                        <label>動作テスト</label>
+                        <button id="ky-btn-test-marquee" class="ky-btn" style="background:#17a2b8; width:100%;">流れる字幕をテスト (3連発)</button>
+                    </div>
                 </div>
 
                 <div style="padding: 10px; border-top: 1px solid #ccc; display: flex; justify-content: space-between; align-items: center; background: #fafafa; border-radius: 0 0 8px 8px;">
@@ -612,6 +614,37 @@
             bindInput('ky-set-url-bou', 'bouyomiUrl');
             bindInput('ky-set-url-coe', 'coeiroinkUrl');
             bindInput('ky-set-url-sei', 'seikaUrl');
+
+            // ▼ 修正: テストボタンの処理（2秒間隔・常時・ON/OFFトグル） ▼
+            const btnTestMarquee = document.getElementById('ky-btn-test-marquee');
+            if (btnTestMarquee) {
+                btnTestMarquee.textContent = "流れる字幕をテスト (2秒間隔)";
+                let testIntervalId = null;
+                let testCount = 1;
+
+                btnTestMarquee.onclick = () => {
+                    if (testIntervalId) {
+                        // 実行中の場合はタイマーを停止
+                        clearInterval(testIntervalId);
+                        testIntervalId = null;
+                        btnTestMarquee.textContent = "流れる字幕をテスト (2秒間隔)";
+                        btnTestMarquee.style.background = "#17a2b8"; // 水色に戻す
+                    } else {
+                        // 停止中の場合はタイマーを開始
+                        btnTestMarquee.textContent = "テストを停止する";
+                        btnTestMarquee.style.background = "#dc3545"; // 赤色にする
+
+                        // 押した瞬間に1回目を流す
+                        UIManager.spawnMarquee(`テストメッセージ ${testCount++}：色や速度の確認中です`);
+
+                        // 以降、2秒（2000ミリ秒）間隔で常時流し続ける
+                        testIntervalId = setInterval(() => {
+                            UIManager.spawnMarquee(`テストメッセージ ${testCount++}：色や速度の確認中です`);
+                        }, 2000);
+                    }
+                };
+            }
+            // ▲ 修正ここまで ▲
         },
 
        bindEvents: function() {
@@ -631,35 +664,28 @@
                     }
                     AudioEngine.playUser(text.replace(/\n/g, ' '));
 
-                    // ▼ 修正: komeform を直接 Submit（送信）する方式に変更
                     if (syncKomeCheck && syncKomeCheck.checked) {
-                        // サイトの空間に安全にテキストを渡すためエンコード
                         const safeText = encodeURIComponent(text);
 
                         const injectScript = document.createElement('script');
                         injectScript.textContent = `
                             (function() {
                                 var komeEl = document.getElementById('kome');
-                                var formEl = document.getElementById('komeform'); // 画像で発見したフォームID
+                                var formEl = document.getElementById('komeform');
                                 if (!komeEl) return;
 
-                                // 1. ページ空間側でテキストをセット（デコードして復元）
                                 komeEl.value = decodeURIComponent("${safeText}");
                                 komeEl.dispatchEvent(new Event('input', { bubbles: true }));
                                 komeEl.dispatchEvent(new Event('change', { bubbles: true }));
 
-                                // 2. フォームを送信（Submit）する
                                 if (typeof $ !== 'undefined') {
                                     if (formEl) {
-                                        // jQueryを使ってフォームを送信（サイト側のイベントを発火させる）
                                         $(formEl).submit();
                                     } else {
-                                        // 万が一フォームが見つからなかった場合の予備（強力なEnter）
                                         var eDown = $.Event('keydown', { keyCode: 13, which: 13, key: 'Enter' });
                                         $(komeEl).trigger(eDown);
                                     }
                                 } else {
-                                    // jQueryが無い場合のネイティブ送信
                                     if (formEl) {
                                         formEl.dispatchEvent(new Event('submit', { cancelable: true, bubbles: true }));
                                     }
@@ -667,12 +693,10 @@
                             })();
                         `;
                         document.body.appendChild(injectScript);
-                        injectScript.remove(); // 実行後すぐに削除
+                        injectScript.remove();
 
-                        // 入力欄にフォーカスを戻す
                         inputField.focus();
                     }
-                    // ▲ ここまで
 
                     inputField.value = '';
                 }
@@ -785,14 +809,13 @@
     // [Phase 4] 音声連携モジュール (AudioEngine)
     // =========================================================
     const AudioEngine = {
-        isMuted: false, // ▼追加: 送信ストップ用のフラグ
+        isMuted: false,
 
         init: function() {
             console.log("Komeyomi: AudioEngineを待機状態にしました。");
         },
 
         playViewer: function(text) {
-            // ▼追加: ミュート中はどこにもテキストを送信せず即終了
             if (this.isMuted) return;
 
             const engine = ConfigManager.get("viewerEngine");
@@ -812,7 +835,6 @@
         },
 
         playUser: function(text) {
-            // ▼追加: ミュート中はどこにもテキストを送信せず即終了
             if (this.isMuted) return;
 
             const engine = ConfigManager.get("userEngine");
@@ -923,7 +945,7 @@
             ],
 
             enterSendReversed: false,
-            syncKome: false, // ▼ 追加: komeへ送信する設定の保存用
+            syncKome: false,
 
             voicevoxUrl: "http://localhost:50021",
             bouyomiUrl: "http://localhost:50080",
@@ -947,7 +969,6 @@
             posUserVert: "center",
             posUserHorz: "center"
         },
-// ... 以降の load: function() などは変更不要です
 
         load: function() {
             const saved = GM_getValue("Komeyomi_Config", null);
@@ -984,7 +1005,6 @@
             const userH = Math.floor(this.data.sizeUserFont * 1.15 * 2);
             const totalH = marqueeH + userH;
 
-            // サイズ・高さ関連
             root.style.setProperty('--ky-marquee-h', `${marqueeH}px`);
             root.style.setProperty('--ky-user-h', `${userH}px`);
             root.style.setProperty('--ky-total-h', `${totalH}px`);
@@ -995,26 +1015,21 @@
             root.style.setProperty('--ky-marquee-font', `${this.data.sizeMarqueeFont}px`);
             root.style.setProperty('--ky-user-font', `${this.data.sizeUserFont}px`);
 
-            // フォント設定
             root.style.setProperty('--ky-font-mq', this.data.fontMarquee);
             root.style.setProperty('--ky-font-user', this.data.fontUser);
             root.style.setProperty('--ky-font-sb', this.data.fontSidebar);
 
-            // 背景色設定
             root.style.setProperty('--ky-bg-marquee', this.data.colorMarqueeBg);
             root.style.setProperty('--ky-bg-user', this.data.colorUserBg);
             root.style.setProperty('--ky-bg-sidebar', this.data.colorSidebarBg);
             root.style.setProperty('--ky-bg-sidebar-item', this.data.colorSidebarItemBg);
 
-            // 字幕アニメーション速度
             root.style.setProperty('--ky-marquee-speed', `${this.data.speedMarquee}s`);
 
-            // 字幕の位置と配置
             const horzAlign = (this.data.posUserHorz === 'flex-start' || this.data.posUserHorz === 'left') ? 'left' : 'center';
             root.style.setProperty('--ky-user-vert', this.data.posUserVert);
             root.style.setProperty('--ky-user-text-align', horzAlign);
 
-            // コメ欄のピン留め位置を更新
             if (typeof UIManager !== "undefined" && UIManager.pinKomediv) {
                 UIManager.pinKomediv();
             }
