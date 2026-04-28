@@ -312,8 +312,9 @@
             const panel = document.createElement('div');
             panel.id = 'komeyomi-settings-panel';
             panel.style.cssText = `position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 500px; background: #fff; border: 1px solid #ccc; border-radius: 8px; box-shadow: 0 4px 20px rgba(0,0,0,0.3); z-index: 100000; display: none; flex-direction: column; font-family: sans-serif;`;
+
+            // フォントの選択肢（07やさしさゴシックを含む）
             const fontOptions = `
-                <option value="'07YasashisaGothic', '07やさしさゴシック', sans-serif">07やさしさゴシック</option>
                 <option value="sans-serif">標準 (ゴシック)</option>
                 <option value="'Noto Sans JP', sans-serif">Noto Sans JP</option>
                 <option value="'Noto Serif JP', serif">Noto Serif JP</option>
@@ -321,13 +322,15 @@
                 <option value="'Dela Gothic One', cursive">Dela Gothic One</option>
                 <option value="'Yusei Magic', sans-serif">Yusei Magic</option>
                 <option value="'UD Digi Kyokasho NK-R', 'UD デジタル 教科書体 NK-R', sans-serif">教科書体NK</option>
+                <option value="'07YasashisaGothic', '07やさしさゴシック', sans-serif">07やさしさゴシック</option>
             `;
+
             panel.innerHTML = `
                 <style>
                     .ky-tab-btn { flex: 1; padding: 12px; text-align: center; cursor: pointer; background: #e0e0e0; font-weight: bold; font-size: 14px; border-right: 1px solid #ccc; }
                     .ky-tab-btn:last-child { border-right: none; }
                     .ky-tab-btn.active { background: #fff; color: #007bff; border-bottom: 2px solid #007bff; }
-                    .ky-tab-content { display: none; padding: 20px; overflow-y: auto; height: 350px; font-size: 14px; color: #333; }
+                    .ky-tab-content { display: none; padding: 20px; overflow-y: auto; height: 400px; font-size: 14px; color: #333; }
                     .ky-tab-content.active { display: block; }
                     .ky-row { margin-bottom: 15px; }
                     .ky-row label { display: block; margin-bottom: 5px; font-weight: bold; }
@@ -339,12 +342,13 @@
                     .ky-btn-add { background: #28a745; }
                     .ky-btn-del { background: #dc3545; }
                     .ky-btn-close { background: #6c757d; }
+                    .ky-color-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; background: #f0f0f0; padding: 10px; border-radius: 4px; }
                 </style>
 
                 <div style="display: flex; border-bottom: 1px solid #ccc; border-radius: 8px 8px 0 0; overflow: hidden;">
                     <div class="ky-tab-btn active" data-target="tab-size">サイズ</div>
                     <div class="ky-tab-btn" data-target="tab-audio">音声</div>
-                    <div class="ky-tab-btn" data-target="tab-sub">字幕</div>
+                    <div class="ky-tab-btn" data-target="tab-sub">字幕・背景</div>
                     <div class="ky-tab-btn" data-target="tab-conn">接続</div>
                 </div>
 
@@ -353,49 +357,54 @@
                     <div class="ky-row"><label>サイドバー文字サイズ</label><div class="ky-slider-container"><input type="range" id="ky-set-sb-font" min="10" max="40" style="flex:1;"><span class="ky-slider-val" id="ky-val-sb-font"></span>px</div></div>
                     <div class="ky-row"><label>サイドバー枠内余白</label><div class="ky-slider-container"><input type="range" id="ky-set-sb-pad" min="0" max="30" style="flex:1;"><span class="ky-slider-val" id="ky-val-sb-pad"></span>px</div></div>
                     <div class="ky-row"><label>サイドバー枠間隔</label><div class="ky-slider-container"><input type="range" id="ky-set-sb-gap" min="0" max="30" style="flex:1;"><span class="ky-slider-val" id="ky-val-sb-gap"></span>px</div></div>
-                    <div class="ky-row"><label>流れる字幕文字サイズ</label><div class="ky-slider-container"><input type="range" id="ky-set-mq-font" min="16" max="100" style="flex:1;"><span class="ky-slider-val" id="ky-val-mq-font"></span>px</div></div>
+                    <div class="ky-row"><label>流れる字幕（テロップ）文字サイズ</label><div class="ky-slider-container"><input type="range" id="ky-set-mq-font" min="16" max="100" style="flex:1;"><span class="ky-slider-val" id="ky-val-mq-font"></span>px</div></div>
                     <div class="ky-row"><label>ユーザー字幕文字サイズ</label><div class="ky-slider-container"><input type="range" id="ky-set-us-font" min="16" max="100" style="flex:1;"><span class="ky-slider-val" id="ky-val-us-font"></span>px</div></div>
                 </div>
 
                 <div id="tab-audio" class="ky-tab-content">
-                    <div class="ky-row"><label>【自分】のエンジン</label><select id="ky-set-user-engine" class="ky-input"><option value="voicevox">VOICEVOX</option><option value="coeiroink">COEIROINK</option><option value="seika">AssistantSeika(VOICEROID)</option><option value="bouyomi">棒読みちゃん(VOICEROID)</option></select></div>
+                    <div class="ky-row"><label>【自分】のエンジン</label><select id="ky-set-user-engine" class="ky-input"><option value="voicevox">VOICEVOX</option><option value="coeiroink">COEIROINK</option><option value="seika">AssistantSeika</option><option value="bouyomi">棒読みちゃん</option></select></div>
                     <div class="ky-row"><label>自分 話者選択</label><select id="ky-set-user-id" class="ky-input"><option value="0">接続を確認してください</option></select></div>
-
                     <div class="ky-row">
-                        <label>自分 音声パラメータ (VV/COE)</label>
+                        <label>自分 音声パラメータ</label>
                         <div style="display:flex; flex-direction:column; gap:8px; padding-right:50px;">
-                            <div style="display:flex; align-items:center;"><span style="width:40px;">話速</span><input type="range" id="ky-set-u-vv-spd" min="0.5" max="2.0" step="0.01" style="flex:1; cursor:pointer;"><span id="ky-val-u-vv-spd" style="width:40px; text-align:right;"></span></div>
-                            <div style="display:flex; align-items:center;"><span style="width:40px;">高音</span><input type="range" id="ky-set-u-vv-pit" min="-0.15" max="0.15" step="0.01" style="flex:1; cursor:pointer;"><span id="ky-val-u-vv-pit" style="width:40px; text-align:right;"></span></div>
-                            <div style="display:flex; align-items:center;"><span style="width:40px;">抑揚</span><input type="range" id="ky-set-u-vv-int" min="0.0" max="2.0" step="0.01" style="flex:1; cursor:pointer;"><span id="ky-val-u-vv-int" style="width:40px; text-align:right;"></span></div>
+                            <div style="display:flex; align-items:center;"><span style="width:40px;">話速</span><input type="range" id="ky-set-u-vv-spd" min="0.5" max="2.0" step="0.01" style="flex:1;"><span id="ky-val-u-vv-spd" style="width:40px; text-align:right;"></span></div>
+                            <div style="display:flex; align-items:center;"><span style="width:40px;">高音</span><input type="range" id="ky-set-u-vv-pit" min="-0.15" max="0.15" step="0.01" style="flex:1;"><span id="ky-val-u-vv-pit" style="width:40px; text-align:right;"></span></div>
+                            <div style="display:flex; align-items:center;"><span style="width:40px;">抑揚</span><input type="range" id="ky-set-u-vv-int" min="0.0" max="2.0" step="0.01" style="flex:1;"><span id="ky-val-u-vv-int" style="width:40px; text-align:right;"></span></div>
                         </div>
                     </div>
-
                     <hr style="margin:20px 0; border:0; border-top:1px dashed #ccc;">
-                    <div class="ky-row"><label>【視聴者】のエンジン</label><select id="ky-set-viewer-engine" class="ky-input"><option value="voicevox">VOICEVOX</option><option value="coeiroink">COEIROINK</option><option value="seika">AssistantSeika(VOICEROID)</option><option value="bouyomi">棒読みちゃん(VOICEROID)</option></select></div>
-                    <div class="ky-row"><label>視聴者の音声 (ランダム選択リスト)</label><div id="ky-viewer-list"></div><button id="ky-btn-add-viewer" class="ky-btn ky-btn-add" style="margin-top:10px;">+ 話者を追加</button></div>
+                    <div class="ky-row"><label>【視聴者】のエンジン</label><select id="ky-set-viewer-engine" class="ky-input"><option value="voicevox">VOICEVOX</option><option value="coeiroink">COEIROINK</option><option value="seika">AssistantSeika</option><option value="bouyomi">棒読みちゃん</option></select></div>
+                    <div class="ky-row"><label>視聴者の音声リスト</label><div id="ky-viewer-list"></div><button id="ky-btn-add-viewer" class="ky-btn ky-btn-add" style="margin-top:10px;">+ 話者を追加</button></div>
                 </div>
 
                 <div id="tab-sub" class="ky-tab-content">
-                    <div class="ky-row"><label>【流れる字幕】のフォント</label><select id="ky-set-font-mq" class="ky-input">${fontOptions}</select></div>
-                    <div class="ky-row"><label>【ユーザー字幕】のフォント</label><select id="ky-set-font-user" class="ky-input">${fontOptions}</select></div>
+                    <div class="ky-row"><label>【テロップ】のフォント</label><select id="ky-set-font-mq" class="ky-input">${fontOptions}</select></div>
+                    <div class="ky-row"><label>【字幕】のフォント</label><select id="ky-set-font-user" class="ky-input">${fontOptions}</select></div>
                     <div class="ky-row"><label>【サイドバー】のフォント</label><select id="ky-set-font-sb" class="ky-input">${fontOptions}</select></div>
 
                     <div class="ky-row ky-flex" style="background:#f9f9f9; padding:10px; border-radius:4px; border:1px solid #eee;">
                         <div style="flex:1"><label>ユーザー字幕 縦位置</label><select id="ky-set-us-vert" class="ky-input"><option value="flex-start">上寄り</option><option value="center">中央</option><option value="flex-end">下寄り</option></select></div>
-                        <div style="flex:1"><label>ユーザー字幕 横位置</label><select id="ky-set-us-horz" class="ky-input"><option value="left">左寄せ</option><option value="center">中央</option></select></div>
+                        <div style="flex:1"><label>横位置</label><select id="ky-set-us-horz" class="ky-input"><option value="left">左寄せ</option><option value="center">中央</option></select></div>
                     </div>
-                    <div class="ky-row ky-flex">
-                        <div style="flex:1"><label>テロップ背景</label><input type="color" id="ky-set-col-mq" style="width:100%;"></div>
-                        <div style="flex:1"><label>ユーザー字幕背景</label><input type="color" id="ky-set-col-us" style="width:100%;"></div>
+
+                    <div class="ky-row">
+                        <label>背景色の設定</label>
+                        <div class="ky-color-grid">
+                            <div><label style="font-size:11px;">テロップ</label><input type="color" id="ky-set-col-mq" style="width:100%;"></div>
+                            <div><label style="font-size:11px;">字幕</label><input type="color" id="ky-set-col-us" style="width:100%;"></div>
+                            <div><label style="font-size:11px;">サイドバー</label><input type="color" id="ky-set-col-sb" style="width:100%;"></div>
+                            <div><label style="font-size:11px;">枠(コメ)</label><input type="color" id="ky-set-col-sbi" style="width:100%;"></div>
+                        </div>
                     </div>
-                    <div class="ky-row"><label>流れる字幕速度</label><div class="ky-slider-container"><input type="range" id="ky-set-speed" min="2" max="20" style="flex:1;"><span class="ky-slider-val" id="ky-val-speed"></span>秒</div></div>
+
+                    <div class="ky-row"><label>テロップの流れる速度</label><div class="ky-slider-container"><input type="range" id="ky-set-speed" min="2" max="20" style="flex:1;"><span class="ky-slider-val" id="ky-val-speed"></span>秒</div></div>
                 </div>
 
                 <div id="tab-conn" class="ky-tab-content">
                     <div class="ky-row" style="background:#fff3cd; padding:10px; border-radius:4px; border:1px solid #ffeeba;">
                         <label style="display:flex; align-items:center; cursor:pointer; gap:10px; margin:0;">
-                            <input type="checkbox" id="ky-set-enter-rev" style="width:20px; height:20px; cursor:pointer;">
-                            <span>送信[Shift+Enter] / 改行[Enter] に逆転させる</span>
+                            <input type="checkbox" id="ky-set-enter-rev" style="width:20px; height:20px;">
+                            <span>送信[Shift+Enter] / 改行[Enter] に逆転</span>
                         </label>
                     </div>
                     <div class="ky-row"><label>VOICEVOX URL</label><input type="text" id="ky-set-url-vv" class="ky-input"></div>
@@ -405,7 +414,7 @@
                 </div>
 
                 <div style="padding: 10px; border-top: 1px solid #ccc; display: flex; justify-content: space-between; align-items: center; background: #fafafa; border-radius: 0 0 8px 8px;">
-                    <button id="ky-btn-reset-panel" class="ky-btn ky-btn-del" title="すべての設定を消去して初期状態に戻します">設定を初期化</button>
+                    <button id="ky-btn-reset-panel" class="ky-btn ky-btn-del">設定を初期化</button>
                     <button id="ky-btn-close-panel" class="ky-btn ky-btn-close">閉じる</button>
                 </div>
             `;
@@ -975,6 +984,7 @@
             const userH = Math.floor(this.data.sizeUserFont * 1.15 * 2);
             const totalH = marqueeH + userH;
 
+            // サイズ・高さ関連
             root.style.setProperty('--ky-marquee-h', `${marqueeH}px`);
             root.style.setProperty('--ky-user-h', `${userH}px`);
             root.style.setProperty('--ky-total-h', `${totalH}px`);
@@ -985,24 +995,30 @@
             root.style.setProperty('--ky-marquee-font', `${this.data.sizeMarqueeFont}px`);
             root.style.setProperty('--ky-user-font', `${this.data.sizeUserFont}px`);
 
+            // フォント設定
             root.style.setProperty('--ky-font-mq', this.data.fontMarquee);
             root.style.setProperty('--ky-font-user', this.data.fontUser);
             root.style.setProperty('--ky-font-sb', this.data.fontSidebar);
 
+            // 背景色設定
             root.style.setProperty('--ky-bg-marquee', this.data.colorMarqueeBg);
             root.style.setProperty('--ky-bg-user', this.data.colorUserBg);
             root.style.setProperty('--ky-bg-sidebar', this.data.colorSidebarBg);
             root.style.setProperty('--ky-bg-sidebar-item', this.data.colorSidebarItemBg);
+
+            // 字幕アニメーション速度
             root.style.setProperty('--ky-marquee-speed', `${this.data.speedMarquee}s`);
 
-            // ▼修正: CSSへの変数の渡し方を変更（左寄せと枠の中央維持の両立）
+            // 字幕の位置と配置
             const horzAlign = (this.data.posUserHorz === 'flex-start' || this.data.posUserHorz === 'left') ? 'left' : 'center';
             root.style.setProperty('--ky-user-vert', this.data.posUserVert);
             root.style.setProperty('--ky-user-text-align', horzAlign);
 
-            if (typeof UIManager !== "undefined" && UIManager.pinKomediv) UIManager.pinKomediv();
-        }
-    }
+            // コメ欄のピン留め位置を更新
+            if (typeof UIManager !== "undefined" && UIManager.pinKomediv) {
+                UIManager.pinKomediv();
+            }
+        }}
 
     // =========================================================
     // 実行エントリポイント
