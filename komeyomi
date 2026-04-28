@@ -313,6 +313,7 @@
             panel.id = 'komeyomi-settings-panel';
             panel.style.cssText = `position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 500px; background: #fff; border: 1px solid #ccc; border-radius: 8px; box-shadow: 0 4px 20px rgba(0,0,0,0.3); z-index: 100000; display: none; flex-direction: column; font-family: sans-serif;`;
             const fontOptions = `
+                <option value="'07YasashisaGothic', '07やさしさゴシック', sans-serif">07やさしさゴシック</option>
                 <option value="sans-serif">標準 (ゴシック)</option>
                 <option value="'Noto Sans JP', sans-serif">Noto Sans JP</option>
                 <option value="'Noto Serif JP', serif">Noto Serif JP</option>
