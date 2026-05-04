@@ -181,18 +181,15 @@
 
         pinKomediv: function() {
             const target = document.getElementById('komediv');
-            const sidebar = document.getElementById('komeyomi-sidebar');
-            const toolbar = document.getElementById('komeyomi-toolbar');
-            if (!target || !sidebar || !toolbar) return;
+            if (!target) return;
             const lockPosition = () => {
-                const tbRect = toolbar.getBoundingClientRect();
-                const bottomPos = window.innerHeight - tbRect.top + 10;
-                const rightPos = window.innerWidth - tbRect.right;
+                target.style.setProperty('position', 'fixed', 'important');
                 target.style.setProperty('top', 'auto', 'important');
                 target.style.setProperty('left', 'auto', 'important');
                 target.style.setProperty('margin', '0', 'important');
-                target.style.setProperty('bottom', `${bottomPos}px`, 'important');
-                target.style.setProperty('right', `${rightPos}px`, 'important');
+                target.style.setProperty('bottom', '0', 'important');
+                target.style.setProperty('right', `calc(var(--ky-sidebar-w) + 10px)`, 'important');
+                target.style.setProperty('z-index', '99998', 'important');
             };
             const observer = new MutationObserver(() => {
                 observer.disconnect();
@@ -207,6 +204,7 @@
             lockPosition();
             observer.observe(target, { attributes: true, attributeFilter: ['style'] });
         },
+//block 3.0 〆
 
         buildTopAreas: function() {
             const topContainer = document.createElement('div');
@@ -233,27 +231,26 @@
         buildToolbar: function() {
             const toolbar = document.createElement('div');
             toolbar.id = 'komeyomi-toolbar';
-            toolbar.style.cssText = `position: fixed; bottom: 15px; right: calc(var(--ky-sidebar-w) + 15px); display: flex; align-items: stretch; gap: 8px; background: #222; padding: 10px 15px; border-radius: 8px; z-index: 99999; box-shadow: 0 4px 10px rgba(0,0,0,0.5);`;
-
-            const inputField = document.createElement('textarea');
-            inputField.id = 'komeyomi-chat-input';
-            inputField.maxLength = 40;
-            inputField.rows = 2;
-            inputField.placeholder = 'メッセージを入力...';
-            inputField.style.cssText = `width: 500px; padding: 5px; font-size: 24px; border: 1px solid #555; border-radius: 4px; outline: none; background: #fff; color: #000; resize: none; overflow: hidden; font-family: sans-serif; line-height: 1.4; box-sizing: border-box;`;
-
-            const settingsBtn = document.createElement('button');
-            settingsBtn.id = 'komeyomi-settings-btn';
-            settingsBtn.textContent = '⚙';
-            settingsBtn.title = '設定';
-            settingsBtn.style.cssText = `padding: 0 10px; font-size: 20px; cursor: pointer; background: #444; color: #fff; border: none; border-radius: 4px; display: flex; align-items: center; justify-content: center;`;
-
+            const savedLeft = ConfigManager.get('toolbarLeft');
+            const savedTop = ConfigManager.get('toolbarTop');
+            toolbar.style.cssText = `position: fixed; display: flex; flex-direction: column; background: #222; border-radius: 8px; z-index: 99999; box-shadow: 0 4px 10px rgba(0,0,0,0.5);`;
+            if (savedLeft !== null && savedTop !== null) {
+                toolbar.style.left = savedLeft + 'px';
+                toolbar.style.top = savedTop + 'px';
+            } else {
+                toolbar.style.bottom = '15px';
+                toolbar.style.right = `calc(var(--ky-sidebar-w) + 15px)`;
+            }
+            const dragHandle = document.createElement('div');
+            dragHandle.style.cssText = `width: 100%; height: 12px; background: #555; border-radius: 8px 8px 0 0; cursor: grab;`;
+            dragHandle.title = "ドラッグで移動";
+            const toolsContainer = document.createElement('div');
+            toolsContainer.style.cssText = `display: flex; align-items: stretch; gap: 8px; padding: 10px 15px;`;
             const pauseBtn = document.createElement('button');
             pauseBtn.id = 'komeyomi-pause-btn';
             pauseBtn.textContent = '🔊';
             pauseBtn.title = '読み上げを一時停止';
             pauseBtn.style.cssText = `padding: 0 10px; font-size: 20px; cursor: pointer; background: #444; color: #fff; border: none; border-radius: 4px; display: flex; align-items: center; justify-content: center; transition: background-color 0.2s;`;
-
             pauseBtn.onclick = () => {
                 AudioEngine.isMuted = !AudioEngine.isMuted;
                 if (AudioEngine.isMuted) {
@@ -266,37 +263,74 @@
                     pauseBtn.title = '読み上げを一時停止';
                 }
             };
-
-            const sendContainer = document.createElement('div');
-            sendContainer.style.cssText = `display: flex; flex-direction: column; gap: 4px; align-items: center; justify-content: center;`;
-
-            const komeCheckLabel = document.createElement('label');
-            komeCheckLabel.style.cssText = `color: #fff; font-size: 11px; display: flex; align-items: center; gap: 4px; cursor: pointer; white-space: nowrap;`;
-
-            const komeCheck = document.createElement('input');
-            komeCheck.type = 'checkbox';
-            komeCheck.id = 'komeyomi-sync-kome';
-            komeCheck.checked = ConfigManager.get('syncKome') || false;
-            komeCheck.addEventListener('change', (e) => {
-                ConfigManager.set('syncKome', e.target.checked);
-            });
-
-            komeCheckLabel.appendChild(komeCheck);
-            komeCheckLabel.appendChild(document.createTextNode('komeにも送信'));
-
-            const sendBtn = document.createElement('button');
-            sendBtn.id = 'komeyomi-send-btn';
-            sendBtn.textContent = '送信';
-            sendBtn.style.cssText = `flex: 1; padding: 0 20px; font-size: 16px; cursor: pointer; background: #007bff; color: #fff; border: none; border-radius: 4px; font-weight: bold; display: flex; align-items: center; justify-content: center; width: 100%; box-sizing: border-box;`;
-
-            sendContainer.appendChild(komeCheckLabel);
-            sendContainer.appendChild(sendBtn);
-
-            toolbar.appendChild(settingsBtn);
-            toolbar.appendChild(pauseBtn);
-            toolbar.appendChild(inputField);
-            toolbar.appendChild(sendContainer);
+            const inputField = document.createElement('textarea');
+            inputField.id = 'komeyomi-chat-input';
+            inputField.maxLength = 40;
+            inputField.rows = 2;
+            inputField.placeholder = 'メッセージを入力...';
+            inputField.style.cssText = `width: 500px; padding: 5px; font-size: 24px; border: 1px solid #555; border-radius: 4px; outline: none; background: #fff; color: #000; resize: none; overflow: hidden; font-family: sans-serif; line-height: 1.4; box-sizing: border-box;`;
+            const settingsBtn = document.createElement('button');
+            settingsBtn.id = 'komeyomi-settings-btn';
+            settingsBtn.textContent = '⚙';
+            settingsBtn.title = '設定';
+            settingsBtn.style.cssText = `padding: 0 10px; font-size: 20px; cursor: pointer; background: #444; color: #fff; border: none; border-radius: 4px; display: flex; align-items: center; justify-content: center;`;
+            toolsContainer.appendChild(pauseBtn);
+            toolsContainer.appendChild(inputField);
+            toolsContainer.appendChild(settingsBtn);
+            toolbar.appendChild(dragHandle);
+            toolbar.appendChild(toolsContainer);
             document.body.appendChild(toolbar);
+            let isDragging = false;
+            let startX, startY, initialLeft, initialTop;
+            const savePos = () => {
+                const rect = toolbar.getBoundingClientRect();
+                ConfigManager.set('toolbarLeft', rect.left);
+                ConfigManager.set('toolbarTop', rect.top);
+            };
+            const onMouseMove = (e) => {
+                if (!isDragging) return;
+                let newLeft = initialLeft + (e.clientX - startX);
+                let newTop = initialTop + (e.clientY - startY);
+                const rect = toolbar.getBoundingClientRect();
+                newLeft = Math.max(0, Math.min(newLeft, window.innerWidth - rect.width));
+                newTop = Math.max(0, Math.min(newTop, window.innerHeight - rect.height));
+                toolbar.style.left = `${newLeft}px`;
+                toolbar.style.top = `${newTop}px`;
+                toolbar.style.right = 'auto';
+                toolbar.style.bottom = 'auto';
+            };
+            const onMouseUp = () => {
+                if (isDragging) savePos();
+                isDragging = false;
+                dragHandle.style.cursor = 'grab';
+                document.removeEventListener('mousemove', onMouseMove);
+                document.removeEventListener('mouseup', onMouseUp);
+            };
+            dragHandle.addEventListener('mousedown', (e) => {
+                isDragging = true;
+                dragHandle.style.cursor = 'grabbing';
+                startX = e.clientX;
+                startY = e.clientY;
+                const rect = toolbar.getBoundingClientRect();
+                initialLeft = rect.left;
+                initialTop = rect.top;
+                toolbar.style.left = `${initialLeft}px`;
+                toolbar.style.top = `${initialTop}px`;
+                toolbar.style.right = 'auto';
+                toolbar.style.bottom = 'auto';
+                document.addEventListener('mousemove', onMouseMove);
+                document.addEventListener('mouseup', onMouseUp);
+            });
+            window.addEventListener('resize', () => {
+                const rect = toolbar.getBoundingClientRect();
+                if (rect.right > window.innerWidth || rect.bottom > window.innerHeight) {
+                    let newLeft = Math.min(rect.left, window.innerWidth - rect.width);
+                    let newTop = Math.min(rect.top, window.innerHeight - rect.height);
+                    toolbar.style.left = `${Math.max(0, newLeft)}px`;
+                    toolbar.style.top = `${Math.max(0, newTop)}px`;
+                    savePos();
+                }
+            });
         },
 
         buildSidebar: function() {
@@ -649,10 +683,7 @@
 
        bindEvents: function() {
             const inputField = document.getElementById('komeyomi-chat-input');
-            const sendBtn = document.getElementById('komeyomi-send-btn');
             const userSubtitleArea = document.getElementById('komeyomi-user-subtitle-area');
-            const syncKomeCheck = document.getElementById('komeyomi-sync-kome');
-
             const handleSend = () => {
                 const text = inputField.value.trim();
                 if (text) {
@@ -663,51 +694,14 @@
                         userSubtitleArea.textContent = text;
                     }
                     AudioEngine.playUser(text.replace(/\n/g, ' '));
-
-                    if (syncKomeCheck && syncKomeCheck.checked) {
-                        const safeText = encodeURIComponent(text);
-
-                        const injectScript = document.createElement('script');
-                        injectScript.textContent = `
-                            (function() {
-                                var komeEl = document.getElementById('kome');
-                                var formEl = document.getElementById('komeform');
-                                if (!komeEl) return;
-
-                                komeEl.value = decodeURIComponent("${safeText}");
-                                komeEl.dispatchEvent(new Event('input', { bubbles: true }));
-                                komeEl.dispatchEvent(new Event('change', { bubbles: true }));
-
-                                if (typeof $ !== 'undefined') {
-                                    if (formEl) {
-                                        $(formEl).submit();
-                                    } else {
-                                        var eDown = $.Event('keydown', { keyCode: 13, which: 13, key: 'Enter' });
-                                        $(komeEl).trigger(eDown);
-                                    }
-                                } else {
-                                    if (formEl) {
-                                        formEl.dispatchEvent(new Event('submit', { cancelable: true, bubbles: true }));
-                                    }
-                                }
-                            })();
-                        `;
-                        document.body.appendChild(injectScript);
-                        injectScript.remove();
-
-                        inputField.focus();
-                    }
-
                     inputField.value = '';
                 }
             };
-
             if (inputField) {
                 inputField.addEventListener('keydown', (e) => {
                     if (e.key === 'Enter') {
                         const isReversed = ConfigManager.get('enterSendReversed');
                         const shouldSend = isReversed ? e.shiftKey : !e.shiftKey;
-
                         if (shouldSend) {
                             e.preventDefault();
                             handleSend();
@@ -715,10 +709,8 @@
                     }
                 });
             }
-            if (sendBtn) {
-                sendBtn.addEventListener('click', handleSend);
-            }
         },
+//block 3.0 〆
 
         spawnMarquee: function(text) {
             const area = document.getElementById('komeyomi-marquee-area');
@@ -937,21 +929,17 @@
             userVvSpeed: 1.0,
             userVvPitch: 0.0,
             userVvIntonation: 1.0,
-
             viewerEngine: "voicevox",
             viewerSpeakers: [
                 { id: 2, speed: 1.0, pitch: 0.0, intonation: 1.0 },
                 { id: 3, speed: 1.0, pitch: 0.0, intonation: 1.0 }
             ],
-
             enterSendReversed: false,
             syncKome: false,
-
             voicevoxUrl: "http://localhost:50021",
             bouyomiUrl: "http://localhost:50080",
             coeiroinkUrl: "http://localhost:50032",
             seikaUrl: "http://localhost:7180",
-
             sizeSidebarWidth: 320,
             sizeSidebarFont: 14,
             sizeSidebarPad: 8,
@@ -967,7 +955,9 @@
             colorSidebarItemBg: "#f0f0f0",
             speedMarquee: 7,
             posUserVert: "center",
-            posUserHorz: "center"
+            posUserHorz: "center",
+            toolbarLeft: null,
+            toolbarTop: null
         },
 
         load: function() {
@@ -1002,9 +992,8 @@
         applyCssVariables: function() {
             const root = document.documentElement;
             const marqueeH = Math.floor(this.data.sizeMarqueeFont * 1.05 * 3);
-            const userH = Math.floor(this.data.sizeUserFont * 1.15 * 2);
+            const userH = Math.floor(this.data.sizeUserFont * 1.15 * 3);
             const totalH = marqueeH + userH;
-
             root.style.setProperty('--ky-marquee-h', `${marqueeH}px`);
             root.style.setProperty('--ky-user-h', `${userH}px`);
             root.style.setProperty('--ky-total-h', `${totalH}px`);
@@ -1014,26 +1003,22 @@
             root.style.setProperty('--ky-sidebar-gap', `${this.data.sizeSidebarGap}px`);
             root.style.setProperty('--ky-marquee-font', `${this.data.sizeMarqueeFont}px`);
             root.style.setProperty('--ky-user-font', `${this.data.sizeUserFont}px`);
-
             root.style.setProperty('--ky-font-mq', this.data.fontMarquee);
             root.style.setProperty('--ky-font-user', this.data.fontUser);
             root.style.setProperty('--ky-font-sb', this.data.fontSidebar);
-
             root.style.setProperty('--ky-bg-marquee', this.data.colorMarqueeBg);
             root.style.setProperty('--ky-bg-user', this.data.colorUserBg);
             root.style.setProperty('--ky-bg-sidebar', this.data.colorSidebarBg);
             root.style.setProperty('--ky-bg-sidebar-item', this.data.colorSidebarItemBg);
-
             root.style.setProperty('--ky-marquee-speed', `${this.data.speedMarquee}s`);
-
             const horzAlign = (this.data.posUserHorz === 'flex-start' || this.data.posUserHorz === 'left') ? 'left' : 'center';
             root.style.setProperty('--ky-user-vert', this.data.posUserVert);
             root.style.setProperty('--ky-user-text-align', horzAlign);
-
             if (typeof UIManager !== "undefined" && UIManager.pinKomediv) {
                 UIManager.pinKomediv();
             }
         }}
+//block 1.0 〆
 
     // =========================================================
     // 実行エントリポイント
